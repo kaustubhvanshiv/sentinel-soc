@@ -1,0 +1,5 @@
+{
+  "name": "Sentinel SOC - Log Analysis & SIEM",
+  "description": "A comprehensive Security Operations Center platform for real-time log ingestion, threat detection, and incident response.",
+  "requestFramePermissions": []
+}
