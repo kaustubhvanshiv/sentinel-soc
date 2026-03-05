@@ -12,9 +12,22 @@ export function initDb() {
       email TEXT UNIQUE,
       password TEXT,
       role TEXT DEFAULT 'analyst',
+      approved INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration for existing tables without the 'approved' column
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
+    const hasApprovedColumn = tableInfo.some(col => col.name === 'approved');
+    if (!hasApprovedColumn) {
+      db.exec("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0");
+      console.log("Migration: Added 'approved' column to users table.");
+    }
+  } catch (e) {
+    console.error("Migration failed:", e);
+  }
 
   // Logs table
   db.exec(`
@@ -61,10 +74,14 @@ export function initDb() {
   // Seed admin user if not exists
   const admin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@sentinel.soc');
   if (!admin) {
-    db.prepare('INSERT INTO users (email, password, role) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO users (email, password, role, approved) VALUES (?, ?, ?, ?)').run(
       'admin@sentinel.soc',
       '$2a$10$X7vH.Mv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.', // password: admin (hashed placeholder)
-      'admin'
+      'admin',
+      1
     );
+  } else {
+    // Ensure admin is approved if already existed
+    db.prepare('UPDATE users SET approved = 1 WHERE email = ?').run('admin@sentinel.soc');
   }
 }
