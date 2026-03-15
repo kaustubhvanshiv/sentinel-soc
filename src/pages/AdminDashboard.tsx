@@ -30,6 +30,9 @@ export default function AdminDashboard() {
   const [error, setError]           = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
+  // Simulator state
+  const [simStatus, setSimStatus]   = useState({ running: false, logsGenerated: 0 });
+
   // Create form state
   const [newEmail, setNewEmail]     = useState('');
   const [newPass, setNewPass]       = useState('');
@@ -54,7 +57,19 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  const fetchSimStatus = async () => {
+    try {
+      const data = await apiFetch('/api/admin/simulator/status');
+      setSimStatus(data);
+    } catch (e) { /* ignore */ }
+  };
+
+  useEffect(() => { 
+    fetchUsers(); 
+    fetchSimStatus();
+    const interval = setInterval(fetchSimStatus, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Create user ────────────────────────────────────────────────────────────
   const handleCreate = async (e: React.FormEvent) => {
@@ -118,6 +133,33 @@ export default function AdminDashboard() {
     }
   };
 
+  // ── Simulator controls ─────────────────────────────────────────────────────
+  const handleStartSim = async () => {
+    try {
+      const data = await apiFetch('/api/admin/simulator/start', { method: 'POST' });
+      setSimStatus(data.status);
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleStopSim = async () => {
+    try {
+      const data = await apiFetch('/api/admin/simulator/stop', { method: 'POST' });
+      setSimStatus(data.status);
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleClearSim = async () => {
+    if (!confirm("This will delete all simulated logs, alerts, and IP intelligence entries. Continue?")) return;
+    try {
+      const data = await apiFetch('/api/admin/simulator/clear', { method: 'DELETE' });
+      alert(`Simulation data cleared successfully.\nLogs: ${data.deletedLogs}\nAlerts: ${data.deletedAlerts}\nIPs: ${data.clearedIPs}`);
+      // Auto-refresh stats/data by reloading the window, ensuring all components fetch fresh state
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
@@ -162,6 +204,62 @@ export default function AdminDashboard() {
             <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Simulation Control */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-zinc-200 text-lg flex items-center gap-2">
+              <RefreshCw size={18} className={simStatus.running ? "animate-spin text-emerald-500" : "text-zinc-500"} />
+              Simulation Control
+            </h3>
+            <p className="text-zinc-500 text-sm mt-1">Generate test logs and attack traffic</p>
+          </div>
+          <div className="flex gap-6 items-center bg-zinc-950/50 p-3 rounded-xl border border-zinc-800/50">
+            <div className="text-right">
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Status</p>
+              <p className={`font-bold mt-0.5 ${simStatus.running ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                {simStatus.running ? 'Running' : 'Stopped'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Logs Generated</p>
+              <p className="font-bold text-zinc-200 mt-0.5">{simStatus.logsGenerated} / 200</p>
+            </div>
+            
+            <div className="w-px h-8 bg-zinc-800 mx-1"></div>
+            
+            {!simStatus.running ? (
+              <button onClick={handleStartSim} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm rounded-lg transition-colors">
+                Start Simulation
+              </button>
+            ) : (
+              <button onClick={handleStopSim} className="px-5 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-semibold text-sm rounded-lg transition-colors flex items-center gap-2">
+                Stop Simulation
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Maintenance section */}
+        <div className="mt-6 pt-6 border-t border-zinc-800/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h4 className="font-semibold text-zinc-300 text-sm flex items-center gap-2">
+                <Trash2 size={16} className="text-rose-500" />
+                Simulation Maintenance
+              </h4>
+              <p className="text-zinc-500 text-xs mt-1">Safely erase all test data without affecting real ingested logs or users.</p>
+            </div>
+            <button 
+              onClick={handleClearSim}
+              className="px-4 py-2 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-400 text-zinc-300 border border-zinc-700 hover:border-rose-500/30 font-medium text-sm rounded-lg transition-colors"
+            >
+              Clear Simulation Data
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Create user form */}

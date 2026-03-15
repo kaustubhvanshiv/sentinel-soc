@@ -6,7 +6,6 @@ import path from "path";
 import { initDb } from "./src/server/db";
 import { setupRoutes } from "./src/server/routes";
 import { startDetectionEngine } from "./src/server/engine/detection";
-import { startLogSimulator } from "./src/server/engine/simulator";
 
 async function startServer() {
   const app = express();
@@ -27,9 +26,8 @@ async function startServer() {
   // Setup API Routes
   setupRoutes(app, io);
 
-  // Start Detection Engine & Simulator
+  // Start Detection Engine
   startDetectionEngine(io);
-  startLogSimulator();
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

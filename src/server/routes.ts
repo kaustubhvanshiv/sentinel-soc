@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import { db } from "./db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { startSimulator, stopSimulator, getSimulatorStatus } from "./engine/simulator";
 
 const JWT_SECRET = process.env.JWT_SECRET || "sentinel-soc-secret-change-in-prod";
 
@@ -128,6 +129,44 @@ export function setupRoutes(app: Express, io: Server) {
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hash, req.params.id);
     console.log(`[Admin] Password reset: ${target.email} by ${req.user.email}`);
     res.json({ success: true });
+  });
+
+  // ── Admin — Simulator Control ─────────────────────────────────────────────
+
+  app.get("/api/admin/simulator/status", requireAdmin, (req, res) => {
+    res.json(getSimulatorStatus());
+  });
+
+  app.post("/api/admin/simulator/start", requireAdmin, (req, res) => {
+    startSimulator();
+    res.json({ success: true, status: getSimulatorStatus() });
+  });
+
+  app.post("/api/admin/simulator/stop", requireAdmin, (req, res) => {
+    stopSimulator();
+    res.json({ success: true, status: getSimulatorStatus() });
+  });
+
+  app.delete("/api/admin/simulator/clear", requireAdmin, (req: any, res) => {
+    // Exact IPs used by the simulator
+    const simIps = ["192.168.1.50", "45.33.22.11", "10.0.0.5", "88.12.34.56", "172.16.0.22"];
+    const placeholders = simIps.map(() => "?").join(",");
+
+    // Run within a transaction for safety
+    const clearSimInfo = db.transaction(() => {
+      const deletedLogs = db.prepare(`DELETE FROM logs WHERE source_ip IN (${placeholders})`).run(...simIps);
+      const deletedAlerts = db.prepare(`DELETE FROM alerts WHERE source_ip IN (${placeholders})`).run(...simIps);
+      const clearedIPs = db.prepare(`DELETE FROM ip_intelligence WHERE ip IN (${placeholders})`).run(...simIps);
+
+      return {
+        deletedLogs: deletedLogs.changes,
+        deletedAlerts: deletedAlerts.changes,
+        clearedIPs: clearedIPs.changes
+      };
+    })();
+
+    console.log(`[Admin] Simulator data cleared by ${req.user.email}:`, clearSimInfo);
+    res.json({ success: true, ...clearSimInfo });
   });
 
   // ── SOC Data Routes (unprotected — add requireAuth if needed later) ────────

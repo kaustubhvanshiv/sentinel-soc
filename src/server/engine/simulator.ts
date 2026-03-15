@@ -24,12 +24,39 @@ const BRUTE_FORCE_IP = "45.33.22.11";
 const WEB_ATTACK_IP  = "88.12.34.56";
 const SCANNER_IP     = "10.0.0.5";
 
-export function startLogSimulator() {
+export interface SimulatorStatus {
+  running: boolean;
+  logsGenerated: number;
+  startTime: number | null;
+}
+
+let state: SimulatorStatus = {
+  running: false,
+  logsGenerated: 0,
+  startTime: null
+};
+
+let mainInterval: NodeJS.Timeout | null = null;
+let scannerInterval: NodeJS.Timeout | null = null;
+let stopTimeout: NodeJS.Timeout | null = null;
+
+export function getSimulatorStatus(): SimulatorStatus {
+  return { ...state };
+}
+
+export function startSimulator() {
+  if (state.running) return;
+
   console.log("Log Simulator started...");
+  state = {
+    running: true,
+    logsGenerated: 0,
+    startTime: Date.now()
+  };
 
   // Main simulator: every 2 seconds
   // Distribution: 50% normal, 30% brute force, 20% web attack
-  setInterval(() => {
+  mainInterval = setInterval(() => {
     const roll = Math.random();
     if (roll < 0.50) {
       generateNormalLog();
@@ -43,9 +70,37 @@ export function startLogSimulator() {
   }, 2000);
 
   // Extra scanner traffic every 4 seconds to trip the path-scanning rule
-  setInterval(() => {
+  scannerInterval = setInterval(() => {
     generateScannerLog();
   }, 4000);
+
+  // Auto-stop after 60 seconds
+  stopTimeout = setTimeout(() => {
+    console.log("Simulator auto-stopped (60s time limit reached)");
+    stopSimulator();
+  }, 60000);
+}
+
+export function stopSimulator() {
+  if (!state.running) return;
+
+  console.log("Log Simulator stopped.");
+  if (mainInterval) clearInterval(mainInterval);
+  if (scannerInterval) clearInterval(scannerInterval);
+  if (stopTimeout) clearTimeout(stopTimeout);
+
+  mainInterval = null;
+  scannerInterval = null;
+  stopTimeout = null;
+
+  state.running = false;
+}
+
+function checkLimits() {
+  if (state.running && state.logsGenerated >= 200) {
+    console.log("Simulator auto-stopped (200 logs limit reached)");
+    stopSimulator();
+  }
 }
 
 function generateNormalLog() {
@@ -55,6 +110,8 @@ function generateNormalLog() {
     INSERT INTO logs (source_ip, service, event_type, status, request_path, raw_log)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(ip, "http", "access", "200", path, `GET ${path} HTTP/1.1 200 OK from ${ip}`);
+  state.logsGenerated++;
+  checkLimits();
 }
 
 function generateBruteForceLog() {
@@ -71,6 +128,8 @@ function generateBruteForceLog() {
     `Failed password for ${user} from ${BRUTE_FORCE_IP} port 22 ssh2`,
     "warning"
   );
+  state.logsGenerated++;
+  checkLimits();
 }
 
 function generateAttackLog() {
@@ -87,6 +146,8 @@ function generateAttackLog() {
     `GET ${path} HTTP/1.1 403 Forbidden from ${WEB_ATTACK_IP}`,
     "critical"
   );
+  state.logsGenerated++;
+  checkLimits();
 }
 
 // Rotates through many distinct paths to trip the path-scanning rule
@@ -105,4 +166,6 @@ function generateScannerLog() {
     path,
     `GET ${path} HTTP/1.1 200 OK from ${SCANNER_IP}`
   );
+  state.logsGenerated++;
+  checkLimits();
 }
