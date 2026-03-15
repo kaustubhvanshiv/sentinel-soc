@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Shield, Check, X, Clock, AlertTriangle, UserPlus, Key, RefreshCw,
-  ChevronDown, Users, Trash2
+  ChevronDown, Users, Trash2, Database
 } from 'lucide-react';
 
 interface User {
@@ -44,6 +44,16 @@ export default function AdminDashboard() {
   const [resetUserId, setResetUserId]   = useState<number | null>(null);
   const [resetPass, setResetPass]       = useState('');
   const [resetting, setResetting]       = useState(false);
+
+  // Manual Log Ingestion state
+  const [ingestIp, setIngestIp] = useState('');
+  const [ingestService, setIngestService] = useState('http');
+  const [ingestEvent, setIngestEvent] = useState('');
+  const [ingestStatus, setIngestStatus] = useState('');
+  const [ingestPath, setIngestPath] = useState('');
+  const [ingestRawLog, setIngestRawLog] = useState('');
+  const [ingesting, setIngesting] = useState(false);
+  const [ingestErr, setIngestErr] = useState('');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -160,6 +170,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleIngestLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIngestErr('');
+    setIngesting(true);
+    try {
+      await apiFetch('/api/logs/ingest', {
+        method: 'POST',
+        body: JSON.stringify({
+          source_ip: ingestIp,
+          service: ingestService,
+          event_type: ingestEvent,
+          status: ingestStatus,
+          request_path: ingestPath,
+          raw_log: ingestRawLog
+        })
+      });
+      alert('Log ingested successfully');
+      setIngestIp(''); setIngestEvent(''); setIngestStatus(''); setIngestPath(''); setIngestRawLog('');
+    } catch (e: any) {
+      setIngestErr(e.message);
+    } finally {
+      setIngesting(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
@@ -260,6 +295,65 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Manual Log Ingestion */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+        <div className="mb-4">
+          <h3 className="font-semibold text-zinc-200 text-lg flex items-center gap-2">
+            <Database size={18} className="text-emerald-500" />
+            Manual Log Ingestion
+          </h3>
+          <p className="text-zinc-500 text-sm mt-1">Inject raw logs directly into the system to test detection rules</p>
+        </div>
+        <form onSubmit={handleIngestLog} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input
+              type="text" required placeholder="Source IP (e.g., 192.168.1.200)"
+              value={ingestIp} onChange={e => setIngestIp(e.target.value)}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+            />
+            <select
+              value={ingestService} onChange={e => setIngestService(e.target.value)}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="http">http</option>
+              <option value="ssh">ssh</option>
+              <option value="system">system</option>
+            </select>
+            <input
+              type="text" required placeholder="Event Type (e.g., auth_failure)"
+              value={ingestEvent} onChange={e => setIngestEvent(e.target.value)}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+            />
+            <input
+              type="text" required placeholder="Status Code (e.g., 401)"
+              value={ingestStatus} onChange={e => setIngestStatus(e.target.value)}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            <input
+              type="text" placeholder="Request Path (optional, e.g., /login?id=1)"
+              value={ingestPath} onChange={e => setIngestPath(e.target.value)}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <textarea
+            required placeholder="Raw Log Text (e.g., Failed password for root from 192.168.1.200 port 22 ssh2)"
+            value={ingestRawLog} onChange={e => setIngestRawLog(e.target.value)}
+            className="w-full h-24 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono resize-none"
+          />
+          <div className="flex justify-end items-center gap-4">
+            {ingestErr && <p className="text-sm text-red-400 flex items-center gap-2"><AlertTriangle size={14} /> {ingestErr}</p>}
+            <button
+              type="submit" disabled={ingesting}
+              className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm rounded-lg transition-colors disabled:opacity-50"
+            >
+              {ingesting ? 'Ingesting...' : 'Ingest Log'}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Create user form */}

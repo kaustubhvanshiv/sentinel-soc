@@ -165,8 +165,31 @@ export function setupRoutes(app: Express, io: Server) {
       };
     })();
 
-    console.log(`[Admin] Simulator data cleared by ${req.user.email}:`, clearSimInfo);
+    console.log(`[Admin] Simulator data cleared by ${(req as any).user.email}:`, clearSimInfo);
     res.json({ success: true, ...clearSimInfo });
+  });
+
+  // ── Admin — Manual Log Ingestion ──────────────────────────────────────────
+
+  app.post("/api/logs/ingest", requireAdmin, (req: any, res) => {
+    const { source_ip, service, event_type, status, request_path, user_agent, raw_log } = req.body;
+
+    if (!source_ip || !service || !event_type || !status || !raw_log) {
+      return res.status(400).json({ error: "Missing required log fields" });
+    }
+
+    try {
+      db.prepare(`
+        INSERT INTO logs (source_ip, service, event_type, status, request_path, user_agent, raw_log)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(source_ip, service, event_type, status, request_path || null, user_agent || null, raw_log);
+
+      console.log(`[Admin] Manual log ingested by ${(req as any).user.email}: ${source_ip} - ${event_type}`);
+      res.json({ success: true, message: "Log ingested successfully" });
+    } catch (e: any) {
+      console.error("[Logs] Ingestion error:", e.message);
+      res.status(500).json({ error: "Failed to ingest log" });
+    }
   });
 
   // ── SOC Data Routes (unprotected — add requireAuth if needed later) ────────
