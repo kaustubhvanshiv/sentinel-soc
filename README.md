@@ -1,5 +1,7 @@
 # Sentinel SOC — Log Analysis & SIEM
 
+📐 System Architecture → See ARCHITECTURE.md
+
 ---
 
 ## 📦 Current Release
@@ -84,6 +86,38 @@ Admin Panel also includes:
 | Database | SQLite (`better-sqlite3`) |
 | Auth | JWT (`jsonwebtoken`), bcrypt |
 | Language | TypeScript (both ends) |
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+
+A[Log Sources: SSH / HTTP / System Logs] --> B[Log Ingestion API]
+
+B --> C[Logs Database]
+
+C --> D[Detection Engine (runs every 5 seconds)]
+
+D --> E{Detection Rules}
+
+E --> F[SSH Brute Force Detection]
+E --> G[Path Scanning Detection]
+E --> H[Web Attack Detection]
+
+F --> I[Alert Engine]
+G --> I
+H --> I
+
+I --> J[Alerts Database]
+I --> K[IP Intelligence Database]
+
+J --> L[SOC Dashboard (React Frontend)]
+K --> L
+
+L --> M[SOC Analyst Investigation]
+```
+
+Sentinel SOC processes security logs through a pipeline consisting of log ingestion, rule-based detection, alert generation, and analyst investigation through the SOC dashboard.
 
 ## 💻 Running Locally
 
