@@ -30,6 +30,13 @@ Real SOC access model — analysts do not self-register:
 - Reset passwords
 - Promote/demote roles (analyst ↔ admin)
 
+Admin Panel also includes:
+- Start Attack Simulation
+- Stop Attack Simulation
+- Automatic simulator shutdown after time limit
+- Clear Simulation Data (removes simulator-generated logs, alerts, and IP intelligence entries)
+- Manual Log Ingestion form for testing detection rules
+
 ### Backend Architecture
 - **Server** — Node.js + Express + Socket.IO, single port (3000), Vite in middleware mode for dev
 - **Database** — SQLite (`better-sqlite3`), zero config, stores Users, Logs, Alerts, IP Intelligence
@@ -76,6 +83,49 @@ Admin logs in
     → Analysts log in
       → Access SOC Dashboard, Logs, Alerts, IP Intelligence
 ```
+
+## Log Testing Features
+
+Sentinel SOC provides multiple methods to test detection rules without requiring external infrastructure.
+
+### Attack Simulator
+
+The built-in simulator generates synthetic traffic including:
+- SSH brute force login attempts
+- Web attack payloads (SQL injection, command injection)
+- Normal HTTP requests
+- Endpoint scanning behavior
+
+The simulator can be started or stopped from the Admin Panel and automatically shuts down after a safety timeout to prevent excessive log generation.
+
+### Manual Log Injection
+
+Administrators can manually inject logs from the Admin Panel.
+
+Fields supported:
+- Source IP
+- Service (HTTP / SSH)
+- Event Type
+- Status Code
+- Request Path
+- Raw Log Message
+
+This feature allows testing detection rules without needing real infrastructure.
+
+Example log:
+`Failed password for root from 192.168.1.200 port 22 ssh2`
+
+## Detection Workflow
+
+Sentinel SOC follows a simplified SOC pipeline:
+`Log Source`
+`→ Log stored in SQLite database`
+`→ Detection Engine evaluates rules every 5 seconds`
+`→ Alerts created if rules match`
+`→ Alerts appear in the SOC dashboard`
+`→ Analysts investigate incidents`
+
+This simulates a Tier-1 SOC analyst workflow.
 
 ## 📁 Project Structure
 

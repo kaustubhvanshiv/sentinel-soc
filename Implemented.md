@@ -45,6 +45,50 @@
 - Dedicated scanner interval every 4s, rotating 12 distinct paths
 - Correctly triggers all 3 detection rules within ~10 seconds of startup
 
+### Attack Simulation System
+The system includes a built-in log simulator that generates synthetic attack traffic for testing detection rules.
+
+Capabilities:
+- Generates simulated SSH brute force attempts
+- Generates simulated web attack payloads
+- Generates normal HTTP traffic
+- Runs on an interval to simulate continuous activity
+
+Admin controls:
+- Start simulation
+- Stop simulation
+- Automatic shutdown after safety timeout
+
+### Manual Log Ingestion
+The Admin Panel includes a manual log ingestion interface.
+Admins can insert logs directly into the system for rule testing.
+
+Supported fields:
+- `source_ip`
+- `service`
+- `event_type`
+- `status`
+- `request_path`
+- `raw_log`
+
+Logs inserted through this interface are processed by the detection engine like normal logs.
+
+### Simulation Environment Reset
+Admins can reset the test environment using the **Clear Simulation Data** feature.
+
+This operation removes:
+- simulator-generated logs
+- alerts triggered by those logs
+- IP intelligence entries created from simulator activity
+
+This allows the SOC environment to be reset between demonstrations.
+
+### Alert Deduplication
+To prevent alert flooding, the detection engine suppresses duplicate alerts.
+
+Rule: 
+If the same IP triggers the same rule within a defined time window, the system skips generating additional alerts.
+
 ### Frontend — All Pages
 | Page | Real Data | Auto-refresh |
 |---|---|---|
