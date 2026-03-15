@@ -1,5 +1,39 @@
 # Sentinel SOC — Log Analysis & SIEM
 
+---
+
+## 📦 Current Release
+
+**Version:** v0.2.0
+
+Sentinel SOC follows semantic versioning:
+
+MAJOR.MINOR.PATCH
+
+Current release includes:
+
+* Rule-based detection engine
+* SOC investigation dashboard
+* RBAC authentication system
+* Admin user management
+* Attack simulation system
+* Manual log ingestion
+* Alert generation and investigation workflow
+* IP intelligence tracking
+
+This release represents the first fully functional prototype of Sentinel SOC capable of simulating attacks and demonstrating SOC triage workflows.
+
+Future versions will introduce:
+
+* Real log ingestion from system logs
+* Docker log monitoring
+* File-based log ingestion
+* Threat intelligence integrations
+* GeoIP enrichment
+* AI-assisted alert triage
+
+---
+
 A production-ready, lightweight Security Operations Center (SOC) built with a Node.js backend acting as a real-time detection engine and a React frontend for analyzing logs, managing alerts, and tracking IP intelligence.
 
 ## 🚀 Features
