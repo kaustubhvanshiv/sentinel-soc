@@ -1,4 +1,3 @@
-```markdown
 # Sentinel SOC — System Architecture
 
 Sentinel SOC is a lightweight Security Information and Event Management (SIEM) system designed to demonstrate real-world SOC monitoring workflows.
@@ -8,8 +7,6 @@ The system ingests logs, analyzes them using rule-based detection, generates ale
 ---
 
 # High Level Architecture
-
-```
 
 ```
         Log Sources
@@ -330,7 +327,3 @@ SOC Analyst Investigation
 ```
 
 The platform is designed to illustrate how modern SOC environments monitor, detect, and respond to security threats.
-
-```
-
----
