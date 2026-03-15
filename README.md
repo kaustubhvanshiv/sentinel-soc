@@ -92,11 +92,11 @@ Admin Panel also includes:
 ```mermaid
 flowchart TD
 
-A[Log Sources: SSH / HTTP / System Logs] --> B[Log Ingestion API]
+A["Log Sources: SSH / HTTP / System Logs"] --> B[Log Ingestion API]
 
 B --> C[Logs Database]
 
-C --> D[Detection Engine (runs every 5 seconds)]
+C --> D["Detection Engine (runs every 5 seconds)"]
 
 D --> E{Detection Rules}
 
@@ -111,7 +111,7 @@ H --> I
 I --> J[Alerts Database]
 I --> K[IP Intelligence Database]
 
-J --> L[SOC Dashboard (React Frontend)]
+J --> L["SOC Dashboard (React Frontend)"]
 K --> L
 
 L --> M[SOC Analyst Investigation]
