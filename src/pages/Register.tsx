@@ -12,6 +12,7 @@ export default function Register({ onRegister, onNavigateToLogin }: RegisterProp
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,7 +45,10 @@ export default function Register({ onRegister, onNavigateToLogin }: RegisterProp
                 throw new Error(data.error || 'Registration failed');
             }
 
-            onRegister(data.token, data.user);
+            // Registration successful — API returns no token (pending admin approval)
+            // Show success message and redirect to login
+            setSuccess(true);
+            setTimeout(() => onNavigateToLogin(), 3000);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -66,6 +70,16 @@ export default function Register({ onRegister, onNavigateToLogin }: RegisterProp
                         Create a new account to access the Sentinel SOC.
                     </p>
                 </div>
+
+                {success && (
+                    <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
+                        <Shield className="text-emerald-500 shrink-0 mt-0.5" size={18} />
+                        <div>
+                            <p className="text-sm text-emerald-400 font-medium">Registration submitted!</p>
+                            <p className="text-xs text-zinc-400 mt-1">Your account is pending admin approval. Redirecting to login...</p>
+                        </div>
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">

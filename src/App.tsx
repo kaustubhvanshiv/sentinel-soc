@@ -23,14 +23,12 @@ import Logs from './pages/Logs';
 import Intelligence from './pages/Intelligence';
 import AlertDetails from './pages/AlertDetails';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 
 const socket = io();
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -39,12 +37,22 @@ export default function App() {
   const [newAlertCount, setNewAlertCount] = useState(0);
 
   useEffect(() => {
-    // Check for existing token
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    if (token && user) {
-      setIsAuthenticated(true);
-      setCurrentUser(JSON.parse(user));
+    // Check for existing token — guard against corrupt localStorage values
+    try {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      if (token && user && token !== 'undefined' && user !== 'undefined') {
+        setIsAuthenticated(true);
+        setCurrentUser(JSON.parse(user));
+      } else {
+        // Clear any corrupt values
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    } catch (e) {
+      console.warn('Invalid session data in localStorage, clearing.', e);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
 
     socket.on('new_alert', (alert) => {
@@ -58,7 +66,6 @@ export default function App() {
     localStorage.setItem('user', JSON.stringify(user));
     setIsAuthenticated(true);
     setCurrentUser(user);
-    setShowRegister(false);
   };
 
   const handleLogout = () => {
@@ -69,10 +76,7 @@ export default function App() {
   };
 
   if (!isAuthenticated) {
-    if (showRegister) {
-      return <Register onRegister={handleLogin} onNavigateToLogin={() => setShowRegister(false)} />;
-    }
-    return <Login onLogin={handleLogin} onNavigateToRegister={() => setShowRegister(true)} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   const renderContent = () => {

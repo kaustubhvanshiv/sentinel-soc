@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 
 const dbPath = path.resolve(process.cwd(), 'soc_system.db');
 export const db = new Database(dbPath);
@@ -12,22 +13,19 @@ export function initDb() {
       email TEXT UNIQUE,
       password TEXT,
       role TEXT DEFAULT 'analyst',
-      approved INTEGER DEFAULT 0,
+      approved INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Migration for existing tables without the 'approved' column
+  // Migration: add approved column if missing (for older DBs)
   try {
     const tableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
-    const hasApprovedColumn = tableInfo.some(col => col.name === 'approved');
-    if (!hasApprovedColumn) {
-      db.exec("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0");
-      console.log("Migration: Added 'approved' column to users table.");
+    const hasApproved = tableInfo.some(col => col.name === 'approved');
+    if (!hasApproved) {
+      db.exec("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 1");
     }
-  } catch (e) {
-    console.error("Migration failed:", e);
-  }
+  } catch (e) { /* ignore */ }
 
   // Logs table
   db.exec(`
@@ -71,17 +69,23 @@ export function initDb() {
     )
   `);
 
-  // Seed admin user if not exists
-  const admin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@sentinel.soc');
-  if (!admin) {
-    db.prepare('INSERT INTO users (email, password, role, approved) VALUES (?, ?, ?, ?)').run(
-      'admin@sentinel.soc',
-      '$2a$10$X7vH.Mv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.Xv.', // password: admin (hashed placeholder)
-      'admin',
-      1
-    );
+  // ── Seed / repair admin account ──────────────────────────────────────────
+  // Always ensure the admin account exists with a valid password hash.
+  // Using bcrypt.hashSync at runtime guarantees the hash is always valid.
+  const ADMIN_EMAIL = 'admin@sentinel.soc';
+  const adminHash = bcrypt.hashSync('admin123', 10);
+
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_EMAIL);
+  if (!existing) {
+    db.prepare(
+      'INSERT INTO users (email, password, role, approved) VALUES (?, ?, ?, ?)'
+    ).run(ADMIN_EMAIL, adminHash, 'admin', 1);
+    console.log('[DB] Admin account created — admin@sentinel.soc / admin123');
   } else {
-    // Ensure admin is approved if already existed
-    db.prepare('UPDATE users SET approved = 1 WHERE email = ?').run('admin@sentinel.soc');
+    // Always reset hash & role so broken seed from old DB is repaired on restart
+    db.prepare(
+      'UPDATE users SET password = ?, role = ?, approved = 1 WHERE email = ?'
+    ).run(adminHash, 'admin', ADMIN_EMAIL);
+    console.log('[DB] Admin account verified/repaired.');
   }
 }

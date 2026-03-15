@@ -3,10 +3,9 @@ import { Shield, Lock, Mail, AlertTriangle } from 'lucide-react';
 
 interface LoginProps {
     onLogin: (token: string, user: any) => void;
-    onNavigateToRegister: () => void;
 }
 
-export default function Login({ onLogin, onNavigateToRegister }: LoginProps) {
+export default function Login({ onLogin }: LoginProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -113,14 +112,8 @@ export default function Login({ onLogin, onNavigateToRegister }: LoginProps) {
                 </form>
 
                 <div className="mt-6 text-center">
-                    <p className="text-sm text-zinc-400">
-                        Don't have an account?{' '}
-                        <button
-                            onClick={onNavigateToRegister}
-                            className="text-emerald-500 hover:text-emerald-400 font-medium transition-colors"
-                        >
-                            Request Access
-                        </button>
+                    <p className="text-xs text-zinc-600">
+                        Access is provisioned by your SOC administrator.
                     </p>
                 </div>
             </div>
