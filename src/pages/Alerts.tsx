@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertCircle, Clock, Shield, Filter, Search, ChevronRight } from 'lucide-react';
+import { Shield, Search, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 
 const SEVERITY_COLORS = {
@@ -14,11 +14,15 @@ export default function Alerts({ onAlertClick }: { onAlertClick: (id: number) =>
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        const res = await axios.get('/api/alerts');
+        const res = await axios.get('/api/alerts', {
+          params: { search: search || undefined }
+        });
         setAlerts(res.data);
       } catch (err) {
         console.error(err);
@@ -29,10 +33,16 @@ export default function Alerts({ onAlertClick }: { onAlertClick: (id: number) =>
     fetchAlerts();
     const interval = setInterval(fetchAlerts, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [search]);
 
-  const filteredAlerts = filter === 'All' 
-    ? alerts 
+  // Debounce: only fire search 400ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const filteredAlerts = filter === 'All'
+    ? alerts
     : alerts.filter(a => a.severity === filter);
 
   return (
@@ -42,13 +52,15 @@ export default function Alerts({ onAlertClick }: { onAlertClick: (id: number) =>
           <h1 className="text-2xl font-bold">Security Alerts</h1>
           <p className="text-zinc-500 text-sm">Real-time threat detection and incident management</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search by IP or Rule..." 
+            <input
+              type="text"
+              placeholder="Search by IP or Rule..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-colors w-64"
             />
           </div>
@@ -83,8 +95,8 @@ export default function Alerts({ onAlertClick }: { onAlertClick: (id: number) =>
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {filteredAlerts.map((alert) => (
-                <tr 
-                  key={alert.id} 
+                <tr
+                  key={alert.id}
                   className="hover:bg-zinc-800/30 transition-colors cursor-pointer group"
                   onClick={() => onAlertClick(alert.id)}
                 >
@@ -97,19 +109,17 @@ export default function Alerts({ onAlertClick }: { onAlertClick: (id: number) =>
                     <p className="text-sm font-medium text-zinc-200">{alert.rule_triggered}</p>
                     <p className="text-xs text-zinc-500 truncate max-w-[200px]">{alert.description}</p>
                   </td>
-                  <td className="px-6 py-4 font-mono text-xs text-zinc-400">
-                    {alert.source_ip}
-                  </td>
+                  <td className="px-6 py-4 font-mono text-xs text-zinc-400">{alert.source_ip}</td>
                   <td className="px-6 py-4 text-xs text-zinc-500">
                     {format(new Date(alert.timestamp), 'MMM dd, HH:mm:ss')}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`flex items-center gap-1.5 text-xs ${
-                      alert.status === 'Open' ? 'text-red-400' : 
+                      alert.status === 'Open' ? 'text-red-400' :
                       alert.status === 'Investigating' ? 'text-yellow-400' : 'text-emerald-400'
                     }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${
-                        alert.status === 'Open' ? 'bg-red-400' : 
+                        alert.status === 'Open' ? 'bg-red-400' :
                         alert.status === 'Investigating' ? 'bg-yellow-400' : 'bg-emerald-400'
                       }`} />
                       {alert.status}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield,
   AlertTriangle,
@@ -16,7 +16,8 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
+import axios from 'axios';
 import Dashboard from './pages/Dashboard';
 import Alerts from './pages/Alerts';
 import Logs from './pages/Logs';
@@ -25,27 +26,35 @@ import AlertDetails from './pages/AlertDetails';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 
-const socket = io();
-
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [newAlertCount, setNewAlertCount] = useState(0);
 
+  // FIX: hold socket in a ref so we can disconnect it on logout
+  const socketRef = useRef<Socket | null>(null);
+
+  // Helper: set axios Authorization header globally
+  const setAxiosToken = (token: string | null) => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  };
+
   useEffect(() => {
-    // Check for existing token — guard against corrupt localStorage values
     try {
       const token = localStorage.getItem('token');
       const user = localStorage.getItem('user');
       if (token && user && token !== 'undefined' && user !== 'undefined') {
+        setAxiosToken(token);
         setIsAuthenticated(true);
         setCurrentUser(JSON.parse(user));
       } else {
-        // Clear any corrupt values
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
@@ -54,16 +63,30 @@ export default function App() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
+  }, []);
 
-    socket.on('new_alert', (alert) => {
+  // FIX: create socket only when authenticated, destroy it on logout
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const socket = io();
+    socketRef.current = socket;
+
+    socket.on('new_alert', () => {
       setNewAlertCount(prev => prev + 1);
     });
-    return () => { socket.off('new_alert'); };
-  }, []);
+
+    return () => {
+      socket.off('new_alert');
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [isAuthenticated]);
 
   const handleLogin = (token: string, user: any) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
+    setAxiosToken(token);
     setIsAuthenticated(true);
     setCurrentUser(user);
   };
@@ -71,8 +94,12 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setAxiosToken(null);
     setIsAuthenticated(false);
     setCurrentUser(null);
+    setActiveTab('dashboard');
+    setSelectedAlertId(null);
+    setNewAlertCount(0);
   };
 
   if (!isAuthenticated) {
@@ -83,7 +110,6 @@ export default function App() {
     if (selectedAlertId) {
       return <AlertDetails id={selectedAlertId} onBack={() => setSelectedAlertId(null)} />;
     }
-
     switch (activeTab) {
       case 'dashboard': return <Dashboard onAlertClick={(id) => setSelectedAlertId(id)} />;
       case 'alerts': return <Alerts onAlertClick={(id) => setSelectedAlertId(id)} />;
@@ -114,7 +140,6 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30">
-      {/* Sidebar */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} border-r border-zinc-800 bg-zinc-900/50 backdrop-blur-xl transition-all duration-300 flex flex-col`}>
         <div className="p-6 flex items-center gap-3 border-bottom border-zinc-800">
           <div className="p-2 bg-emerald-500 rounded-lg shadow-lg shadow-emerald-500/20">
@@ -156,7 +181,6 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-zinc-800 bg-zinc-900/30 backdrop-blur-md flex items-center justify-between px-8">
           <div className="flex items-center gap-4">
@@ -168,7 +192,6 @@ export default function App() {
               {selectedAlertId ? 'Incident Investigation' : activeTab.replace('-', ' ')}
             </h2>
           </div>
-
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
