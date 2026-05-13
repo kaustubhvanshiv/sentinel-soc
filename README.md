@@ -1,7 +1,6 @@
 # Sentinel SOC — Log Analysis & SIEM
 
-📐 System Architecture → See ARCHITECTURE.md
-
+📐 **System Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md)
 ---
 
 ## 📦 Current Release
